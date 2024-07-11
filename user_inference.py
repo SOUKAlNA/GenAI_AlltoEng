@@ -1,38 +1,78 @@
-# This file will be executed when a user wants to query your project.
 import argparse
 from os.path import join
 import json
+import os
+from transformers import LlamaTokenizer, LlamaForCausalLM
+import torch
+from langdetect import detect
 
-# TODO Implement the inference logic here
+# Set the environment variable for PyTorch memory management
+import os
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
+
+# Load the finetuned model and tokenizer
+model_path = join(os.getcwd(), 'final_model')
+tokenizer_path = join(os.getcwd(), 'final_tokenizer')
+tokenizer = LlamaTokenizer.from_pretrained(tokenizer_path)
+model = LlamaForCausalLM.from_pretrained(model_path)
+
+# Set the device to GPU if available, otherwise CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+
+# Enable gradient checkpointing to save memory
+model.gradient_checkpointing_enable()
+
+# Function to clear CUDA cache
+def clear_cuda_cache():
+    torch.cuda.empty_cache()
+
+# Detect language
+def detect_language(text):
+    return detect(text)
+
+# Generate text based on user query
+def generate_text(prompt, max_length=100):
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+
+    # Clear CUDA cache before generation to free up memory
+    clear_cuda_cache()
+
+    # Generate text with half-precision (float16)
+    with torch.cuda.amp.autocast():
+        outputs = model.generate(
+            inputs["input_ids"],
+            max_length=max_length,
+            num_beams=3,  # Reduce the number of beams to reduce memory usage
+            early_stopping=True,
+            no_repeat_ngram_size=2  # Prevents repetition
+        )
+
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+# Handle user query
 def handle_user_query(query, query_id, output_path):
+    # Detect the language of the query
+    detected_language = detect_language(query)
+    
+    # Generate a response based on the user query
+    generated_text = generate_text(query)
+    
+    # Dummy example of generating queries (to be replaced with your actual logic)
     result = {
-        "generated_queries": [ "sports", "soccer", "Munich vs Dortmund" ],
-        "detected_language": "de",
+        "generated_queries": [query, generated_text],  # Example generated queries
+        "detected_language": detected_language,
     }
     
     with open(join(output_path, f"{query_id}.json"), "w") as f:
         json.dump(result, f)
 
+# Optional function to rank articles (left unchanged)
+#def rank_articles(generated_queries, article_representations):
+#    result = []
+#    print(json.dumps(generated_queries))
 
-# TODO OPTIONAL
-# This function is optional for you
-# You can use it to interfer with the default ranking of your system.
-#
-# If you do embeddings, this function will simply compute the cosine-similarity
-# and return the ordering and scores
-def rank_articles(generated_queries, article_representations):
-    """
-    This function takes as arguments the generated / augmented user query, as well as the
-    transformed article representations.
-    
-    It needs to return a list of shape (M, 2), where M <= #article_representations.
-    Each tuple contains [index, score], where index is the index in the article_repr array.
-    The list need already be ordered by score. Higher is better, between 0 and 1.
-    
-    An empty return list indicates no matches.
-    """
-    result = []
-    print(json.dumps(generated_queries))
+exit(0)
 
 
 
@@ -52,4 +92,3 @@ if __name__ == "__main__":
     
     for query, query_id in zip(queries, query_ids):
         handle_user_query(query, query_id, output)
-    

@@ -4,21 +4,60 @@
 # The input files will adhere to the format specified in datastructure/input-file.json
 
 import json
+from transformers import MarianMTModel, MarianTokenizer
 from os.path import join, split as split_path
+import os
+import requests as r
+
 
 # TODO Implement the preprocessing steps here
 def handle_input_file(file_location, output_path):
-    with open(file_location) as f:
-        data = json.load(f)
+    german_articles = join(os.getcwd(), "\dataset\german")
+    french_articles = join(os.getcwd(), "\dataset\french")
+
     
-    # ...
-    transformed_data = data
-    # ...
+    transformed_data = []
+
+    paths = [french_articles, german_articles]
+    for path in paths:
+        #Choose correct model:
+        if path == french_articles:
+            model_name = 'Helsinki-NLP/opus-mt-fr-en'
+            tokenizer = MarianTokenizer.from_pretrained(model_name)
+            model = MarianMTModel.from_pretrained(model_name)
+        if path == german_articles:
+            model_name = 'Helsinki-NLP/opus-mt-de-en'
+            tokenizer = MarianTokenizer.from_pretrained(model_name)
+            model = MarianMTModel.from_pretrained(model_name)
+
+        #parse and load json objects
+        for file_name in [file for file in os.listdir(path) if file.endswith('.json')]:
+            with open(join(path, file_name), encoding='utf-8') as f:
+                #pass
+                data = json.load(f)
+                content = data["content"]
+                # Call to Helsinki translator
+                for i in content:
+                    #texts = ' '.join(map(str, i))
+                    translated = model.generate(**tokenizer(i, return_tensors="pt", padding=True))
+                    translated_content = [tokenizer.decode(t, skip_special_tokens=True) for t in translated]
+
+                    '''translated = model.generate(**tokenizer.prepare_seq2seq_batch(texts))
+                    translated_content = [tokenizer.decode(t, skip_special_tokens=True) for t in translated]'''
+
+                    transformed_data.append(translated_content)
+
+
+                    file_name = split_path(file_location)[-1]
+                    with open(join(output_path), "w") as f:
+                        json.dump({
+                            "transformed_representation": transformed_data  
+                        }, f)
     
-    file_name = split_path(file_location)[-1]
-    with open(join(output_path, file_name), "w") as f:
-        json.dump(transformed_data, f)
-    
+
+if False:
+    handle_input_file("datastructure/input-file.json", "output")
+    exit(0)
 
 # This is a useful argparse-setup, you probably want to use in your project:
 import argparse

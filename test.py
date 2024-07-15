@@ -43,7 +43,7 @@ def test_preprocess():
     mkdir(output_dir)
     
     args = [ "--output", output_dir ]
-    articles = ["sample_data/article_1.json"]
+    articles = ["/dataset"]
     
     for article in articles:
         args.append("--input")

@@ -18,6 +18,10 @@ def check_environment():
     subprocess.check_call([sys.executable, "-m", "pip", "install", "langdetect"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "langchain"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "llama_index"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "protobuf"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "llama-index-llms-huggingface"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "llama-index-readers-json"])
+    
 
     return True
 

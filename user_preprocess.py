@@ -12,8 +12,8 @@ import requests as r
 
 # TODO Implement the preprocessing steps here
 def handle_input_file(file_location, output_path):
-    german_articles = join(os.getcwd(), "/dataset/german")
-    french_articles = join(os.getcwd(), "/dataset/french")
+    german_articles = join(os.getcwd(), "dataset", "german")
+    french_articles = join(os.getcwd(), "dataset", "french")
 
     
     transformed_data = []

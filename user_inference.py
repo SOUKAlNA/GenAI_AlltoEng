@@ -104,7 +104,7 @@ def handle_user_query(query, query_id, output_path):
     
     # Dummy example of generating queries (to be replaced with your actual logic)
     result = {
-        "generated_queries": [query, response],  # Example generated queries
+        "generated_query": [query, response],  # Example generated queries
         "detected_language": detected_language,
     }
     #output_path = "~\datastructure\user-query-response"

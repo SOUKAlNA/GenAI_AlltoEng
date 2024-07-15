@@ -3,6 +3,19 @@ from os.path import join
 import json
 import os
 from transformers import LlamaTokenizer, LlamaForCausalLM
+
+from llama_index.core import SimpleDirectoryReader, Settings, StorageContext, load_index_from_storage, VectorStoreIndex
+from llama_index.core.ingestion import IngestionPipeline
+from llama_index.core.node_parser import TokenTextSplitter
+
+from langchain.chains import ConversationalRetrievalChain
+from langchain.llms import OpenAI
+
+from llama_index.core import VectorStoreIndex, get_response_synthesizer
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.postprocessor import SimilarityPostprocessor
+
 import torch
 from langdetect import detect
 
@@ -14,7 +27,8 @@ os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
 model_path = join(os.getcwd(), 'final_model')
 tokenizer_path = join(os.getcwd(), 'final_tokenizer')
 tokenizer = LlamaTokenizer.from_pretrained(tokenizer_path)
-model = LlamaForCausalLM.from_pretrained(model_path)
+model = LlamaForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True)
+
 
 # Set the device to GPU if available, otherwise CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,7 +46,7 @@ def detect_language(text):
     return detect(text)
 
 # Generate text based on user query
-def generate_text(prompt, max_length=100):
+"""def generate_text(prompt, max_length=100):
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
     # Clear CUDA cache before generation to free up memory
@@ -48,22 +62,52 @@ def generate_text(prompt, max_length=100):
             no_repeat_ngram_size=2  # Prevents repetition
         )
 
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)"""
+
+documents = SimpleDirectoryReader("~/datastructure/preprocessed-file.json").load_data()
+pipeline = IngestionPipeline(transformations=[TokenTextSplitter(), ...])
+nodes = pipeline.run(documents=documents)
+index = VectorStoreIndex(nodes)
+index.storage_context.persist(persist_dir=join(os.getcwd(),"/dataset"))
+
+
+"""with open(join(os.getcwd(), "/datastructure/preprocessed-file.json"), 'r') as f:
+    dataset = json.load(f)
+documents = [Document(text=item['content'], metadata=item) for item in dataset]"""
+
+
 
 # Handle user query
 def handle_user_query(query, query_id, output_path):
     # Detect the language of the query
     detected_language = detect_language(query)
-    
-    # Generate a response based on the user query
-    generated_text = generate_text(query)
+    storage_context = StorageContext.from_defaults(persist_dir=join(os.getcwd(),"/dataset"))
+    index = load_index_from_storage(storage_context)
+    Settings.llm = OpenAI(model=model, tokenizer=tokenizer)
+    query_engine = index.as_query_engine()
+
+    retriever = VectorIndexRetriever(
+    index=index,
+    similarity_top_k=10,)
+
+    # configure response synthesizer
+    response_synthesizer = get_response_synthesizer()
+
+    # assemble query engine
+    query_engine = RetrieverQueryEngine(
+        retriever=retriever,
+        response_synthesizer=response_synthesizer,
+        node_postprocessors=[SimilarityPostprocessor(similarity_cutoff=0.7)],)
+
+    # query
+    response = query_engine.query(query)
     
     # Dummy example of generating queries (to be replaced with your actual logic)
     result = {
-        "generated_queries": [query, generated_text],  # Example generated queries
+        "generated_queries": [query, response],  # Example generated queries
         "detected_language": detected_language,
     }
-    
+    #output_path = "~\datastructure\user-query-response"
     with open(join(output_path, f"{query_id}.json"), "w") as f:
         json.dump(result, f)
 
@@ -72,9 +116,9 @@ def handle_user_query(query, query_id, output_path):
 #    result = []
 #    print(json.dumps(generated_queries))
 
-exit(0)
-
-
+if True:
+    # handle_user_query("What are the benefits of LLMs in programming?", "1", "output")
+    exit(0)
 
 # This is a sample argparse-setup, you probably want to use in your project:
 parser = argparse.ArgumentParser(description='Run the inference.')

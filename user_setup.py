@@ -16,6 +16,8 @@ def download_large_files():
 def check_environment():
     subprocess.check_call([sys.executable, "-m", "pip", "install", "transformers"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "langdetect"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "langchain"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "llama_index"])
 
     return True
 

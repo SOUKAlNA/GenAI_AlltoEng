@@ -77,7 +77,7 @@ def test_inference():
     mkdir(out_dir)
     
     args = [ "--output", out_dir ]
-    queries = ["sports", "soccer", "Munich vs Dortmund"]
+    queries = ["sports", "election", "Munich"]
     for query in queries:
         args.append("--query")
         args.append(query)

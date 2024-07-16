@@ -4,7 +4,7 @@ import json
 import os
 from transformers import LlamaTokenizer, LlamaForCausalLM
 
-from llama_index.core import SimpleDirectoryReader, StorageContext, Document, Settings, load_index_from_storage, VectorStoreIndex, get_response_synthesizer
+from llama_index.core import StorageContext, Settings, load_index_from_storage, VectorStoreIndex, get_response_synthesizer
 from llama_index.readers.json import JSONReader
 
 from llama_index.llms.huggingface import HuggingFaceLLM
@@ -22,8 +22,6 @@ import os
 
 def initModel(query):
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
-
-    token = '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'
 
     # Load the finetuned model and tokenizer
     model_path = join(os.getcwd(), 'final_model')
@@ -49,7 +47,9 @@ def initModel(query):
                         system_prompt=system_prompt,
                         query_wrapper_prompt=query,
                         model=model,
-                        tokenizer=tokenizer)
+                        tokenizer=tokenizer,
+                        device_map="auto",
+                        tokenizer_kwargs={"max_length": 4096})
 
     # Set the device to GPU if available, otherwise CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -87,7 +87,7 @@ def detect_language(text):
 
     return tokenizer.decode(outputs[0], skip_special_tokens=True)'''
 
-reader = JSONReader(collapse_length="<Collapse Length>",ensure_ascii=True)
+reader = JSONReader(ensure_ascii=True)
 documents = reader.load_data(
                     input_file=r"C:\Users\selma\Desktop\seminar\genai-and-democracy-2024\datastructure\preprocessed-file.json", 
                     extra_info={})
@@ -110,7 +110,7 @@ def handle_user_query(query, query_id, output_path):
     Settings.llm = llm
     # And set the service context
 
-    storage_context = StorageContext.from_defaults(persist_dir=join(os.getcwd(),"/dataset"))
+    storage_context = StorageContext.from_defaults(persist_dir=join(os.getcwd(),"dataset"))
     index = load_index_from_storage(storage_context)
     index = VectorStoreIndex.from_documents(documents)
     # Setup index query engine using LLM 

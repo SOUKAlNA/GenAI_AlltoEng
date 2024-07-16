@@ -48,11 +48,11 @@ def handle_input_file(file_location, output_path):
                     transformed_data.append(translated_content)
 
                     #output_path = "~/datastructure/preprocessed-file.json"
-                    file_name = split_path(file_location)[-1]
-                    with open(join(output_path), "w") as f:
-                        json.dump({
-                            "transformed_representation": transformed_data  
-                        }, f)
+                file_name = split_path(file_location)[-1]
+                with open(join(output_path, file_name), "w") as f:
+                    json.dump({
+                        "transformed_representation": transformed_data  
+                    }, f)
     
 
 if False:
